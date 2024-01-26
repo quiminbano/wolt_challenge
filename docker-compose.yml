@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  wolt_app:
+    build: ./wolt_app
+    restart: always
+    ports: 
+    - 8000:8000
+    volumes:
+    - ./wolt_app/api:/app/api
+    - ./wolt_app/wolt_app:/app/wolt_app
+    stdin_open: true
+    tty: true
