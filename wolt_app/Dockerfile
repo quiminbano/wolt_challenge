@@ -3,8 +3,8 @@ FROM python:3.12.1-alpine3.18
 RUN apk update && \
 	apk upgrade && \
 	pip install --upgrade pip && \
-	pip install django && \
-	pip install requests
+	pip install django==5.0.1 && \
+	pip install python-dateutil==2.8.2
 
 WORKDIR /app
 
