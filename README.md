@@ -23,3 +23,13 @@ To run the unit-tester, it is necessary that the server is running in its docker
 ```bash
 docker-compose exec wolt_app python manage.py test api.tests.Tester
 ```
+
+Due that data needs to be provided, it is necessary to send the request as **POST** requests.
+
+### How to send a request to the server.
+
+To send request with data, it is necessary to send the requests to the following url:
+
+```bash
+http://localhost:8000/api/endpoint
+```
