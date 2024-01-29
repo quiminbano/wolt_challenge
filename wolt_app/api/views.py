@@ -8,8 +8,9 @@ import time
 class JSONInputError(Exception):
 	pass
 
-class handleRequest():
+class HandleRequest():
 
+# The constructor of the class initializes the values of the private variables needed for the input validation and the delivery fee calculation.
 	def __init__(self, request : HttpRequest):
 		self.__rawImput = ""
 		self.__decodedBody = {}
@@ -29,6 +30,7 @@ class handleRequest():
 		except (json.JSONDecodeError, JSONInputError, OverflowError):
 			raise JSONInputError
 
+# This method checks if the variables provided in the request are valid or not. For example, it checks if a required variable is missing or if it is an extra one.
 	def __isValidKeys(self):
 		validWords = ['cart_value', 'delivery_distance', 'number_of_items', 'time']
 		for key in self.__decodedBody:
@@ -42,6 +44,8 @@ class handleRequest():
 		except (KeyError, OverflowError):
 			raise JSONInputError
 
+# This method checks if the imput provided in the request is valid or not.
+# A date is considered valid if it is not in the future and if it is after Wolt fundation.
 	def	__isValidType(self):
 		integersList = [self.__cartValue, self.__deliveryDistance, self.__numberOfItems]
 		for integers in integersList:
@@ -57,6 +61,8 @@ class handleRequest():
 		except (parser.ParserError, OverflowError, JSONInputError):
 			raise JSONInputError
 
+# This method is the responsible of calculating the delivery fee regarding the CartValue, The delivery distance and the number of items.
+# Also, it checks if the delivery needs to be done in rush time, to recalculate the delivery fee.
 	def	__calculateDeliveryFee(self):
 		result = 0
 		if self.__cartValue >= 20000:
@@ -72,14 +78,15 @@ class handleRequest():
 						result = result + self.__feeFromNumberOfItems()
 				if result >= 1500:
 					break
-			if self.__timeObject.weekday() == 5 and (self.__timeObject.hour >= 15 and self.__timeObject.hour <= 19):
-				result = round(float(result) * 1.2)
-		except OverflowError:
+			if self.__timeObject.weekday() == 4 and (self.__timeObject.hour >= 15 and self.__timeObject.hour < 19):
+				result = round((float(result) * 1.2))
+		except (OverflowError, JSONInputError):
 			raise JSONInputError
 		if result >= 1500:
 			result = 1500
 		return result
 
+# This method calculates the part of the delivery fee that is related with the cart value.
 	def	__feeFromCartValue(self):
 		result = 0
 	
@@ -87,6 +94,8 @@ class handleRequest():
 			result = 1000 - self.__cartValue
 		return result
 
+# This method calculates the part of the delivery fee related with the delivery distance.
+# In this case, 0m as input is accepted, because sometimes owner can order food from themselves to test the delivery application.
 	def	__feeFromDeliveryDistance(self):
 		result = 200
 		if self.__deliveryDistance <= 1000:
@@ -95,8 +104,12 @@ class handleRequest():
 			result = result + 100
 		return result
 
+# This method calculates the part of the delivery fee related with Number of items. 
+# #If the number of items is 0, the method raise the JSONInputError exception. This is because a charge without items is invalid (in my opinion).
 	def	__feeFromNumberOfItems(self):
 		result = 0
+		if self.__numberOfItems == 0:
+			raise JSONInputError
 		if self.__numberOfItems <= 4:
 			return result
 		for i in range(5, (self.__numberOfItems + 1)):
@@ -105,20 +118,22 @@ class handleRequest():
 			result = result + 120
 		return result
 
+# This method returns the delivery fee calculated.
 	def	getDeliveryFee(self):
 		return self.__deliveryFee
 
 	def	__str__(self):
 		return "handleRequestClass"
 	
-
+# This function is the one in charge of checking the different types of requests.
+# Also, this function is able to initialize the class HandleRequest that calculates the delivery fee and raise the exception JSONInputError in case of error.
 @csrf_exempt #Removed the csrf protection to be able to send request through postman or thunderclient
 def	receiveRequest(request):
 	if (request.method != 'POST'):
-		return JsonResponse({'success': False, 'error': 'Bad request'}, status=400)
+		return JsonResponse({'error': 'Bad request'}, status=400)
 	try:
-		requestHandled = handleRequest(request=request)
+		requestHandled = HandleRequest(request=request)
 	except JSONInputError:
-		return JsonResponse({'success': False, 'error': 'Invalid format of the request'}, status=400)
+		return JsonResponse({'error': 'Invalid format of the request'}, status=400)
 	result = requestHandled.getDeliveryFee()
-	return JsonResponse({'success': True, 'delivery_fee': result}, status=200)
+	return JsonResponse({'delivery_fee': result}, status=200)
