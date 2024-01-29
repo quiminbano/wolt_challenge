@@ -21,5 +21,5 @@ docker-compose up -d
 To run the unit-tester, it is necessary that the server is running in its docker container. In a terminal, go to the folder where the docker-compose.yml file is. Then, run the following command:
 
 ```bash
-docker-compose exec wolt_app python manage.py
+docker-compose exec wolt_app python manage.py test api.tests.Tester
 ```
