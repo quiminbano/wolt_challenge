@@ -1,4 +1,3 @@
-from datetime import datetime
 from dateutil import parser
 from django.http import JsonResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
@@ -26,9 +25,9 @@ class handleRequest():
 			self.__decodedBody = json.loads(self.__rawImput)
 			self.__isValidKeys()
 			self.__isValidType()
-		except (json.JSONDecodeError, JSONInputError):
+			self.__deliveryFee = self.__calculateDeliveryFee()
+		except (json.JSONDecodeError, JSONInputError, OverflowError):
 			raise JSONInputError
-		self.__deliveryFee = self.__calculateDeliveryFee()
 
 	def __isValidKeys(self):
 		validWords = ['cart_value', 'delivery_distance', 'number_of_items', 'time']
@@ -40,15 +39,15 @@ class handleRequest():
 			self.__deliveryDistance = self.__decodedBody['delivery_distance']
 			self.__numberOfItems = self.__decodedBody['number_of_items']
 			self.__time = self.__decodedBody['time']
-		except KeyError:
+		except (KeyError, OverflowError):
 			raise JSONInputError
 
 	def	__isValidType(self):
 		integersList = [self.__cartValue, self.__deliveryDistance, self.__numberOfItems]
 		for integers in integersList:
-			if (type(integers).__str__() != "<class 'int'>") or (integers < 0):
+			if (str(type(integers)) != "<class 'int'>") or (integers < 0):
 				raise JSONInputError
-		if ((type(self.__time).__str__() != "<class 'str'>") or (re.match(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', self.__time) == None)):
+		if ((str(type(self.__time)) != "<class 'str'>") or (re.match(r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z', self.__time) == None)):
 			raise JSONInputError
 		try:
 			self.__timeObject = parser.parse(self.__time)
@@ -59,8 +58,52 @@ class handleRequest():
 			raise JSONInputError
 
 	def	__calculateDeliveryFee(self):
+		result = 0
 		if self.__cartValue >= 20000:
-			return 0
+			return result
+		try:
+			for i in range(1, 4):
+				match i:
+					case 1:
+						result = result + self.__feeFromCartValue()
+					case 2:
+						result = result + self.__feeFromDeliveryDistance()
+					case _:
+						result = result + self.__feeFromNumberOfItems()
+				if result >= 1500:
+					break
+			if self.__timeObject.weekday() == 5 and (self.__timeObject.hour >= 15 and self.__timeObject.hour <= 19):
+				result = round(float(result) * 1.2)
+		except OverflowError:
+			raise JSONInputError
+		if result >= 1500:
+			result = 1500
+		return result
+
+	def	__feeFromCartValue(self):
+		result = 0
+	
+		if self.__cartValue < 1000:
+			result = 1000 - self.__cartValue
+		return result
+
+	def	__feeFromDeliveryDistance(self):
+		result = 200
+		if self.__deliveryDistance <= 1000:
+			return result
+		for i in range(1001, (self.__deliveryDistance + 1), 500):
+			result = result + 100
+		return result
+
+	def	__feeFromNumberOfItems(self):
+		result = 0
+		if self.__numberOfItems <= 4:
+			return result
+		for i in range(5, (self.__numberOfItems + 1)):
+			result = result + 50
+		if self.__numberOfItems > 12:
+			result = result + 120
+		return result
 
 	def	getDeliveryFee(self):
 		return self.__deliveryFee
@@ -77,3 +120,5 @@ def	receiveRequest(request):
 		requestHandled = handleRequest(request=request)
 	except JSONInputError:
 		return JsonResponse({'success': False, 'error': 'Invalid format of the request'}, status=400)
+	result = requestHandled.getDeliveryFee()
+	return JsonResponse({'success': True, 'delivery_fee': result}, status=200)
