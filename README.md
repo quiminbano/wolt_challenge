@@ -32,4 +32,4 @@ To send request with data, it is necessary to send the requests to the following
 http://localhost:8000/api/endpoint
 ```
 
-Due that data needs to be provided, it is necessary to send the request as **POST** requests.
+Due that data needs to be provided, it is necessary to send the request as **POST** request.
